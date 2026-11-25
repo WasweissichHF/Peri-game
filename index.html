@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE PERI GAME</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+body{background:#0a0a12;color:white;min-height:100vh;padding:20px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.logo{font-weight:900;font-size:24px;letter-spacing:2px}
+.logo span{color:#a78bfa}
+.elo-badge{background:#1e1e2e;padding:8px 14px;border-radius:99px;font-weight:700}
+.elo-badge b{color:#4ade80}
+.card{background:#151522;border:1px solid #2a2a40;border-radius:20px;padding:24px;text-align:center}
+h1{font-size:32px;margin-bottom:6px}
+.sub{color:#8888a0;margin-bottom:20px}
+input{width:100%;padding:16px;border-radius:14px;border:1px solid #333;background:#0a0a12;color:white;font-size:18px;text-align:center;outline:none;margin-bottom:12px}
+input:focus{border-color:#a78bfa}
+.btn{width:100%;padding:16px;border:none;border-radius:14px;font-size:17px;font-weight:800;cursor:pointer;margin-bottom:10px}
+.btn-primary{background:#a78bfa;color:#0a0a12}
+.btn-dark{background:#1e1e2e;color:white;border:1px solid #333}
+.btn-active{background:#a78bfa!important;color:#0a0a12!important}
+.timer-wrap{height:8px;background:#222;border-radius:99px;overflow:hidden;margin:16px 0}
+#timerBar{height:100%;background:#4ade80;width:100%;transition:width .1s linear}
+.element-big{font-size:64px;font-weight:900;margin:10px 0}
+.element-sub{color:#a78bfa;font-weight:700;letter-spacing:2px}
+.feedback{height:24px;font-weight:800;margin:10px 0}
+.leader{margin-top:20px;text-align:left}
+.leader-row{display:flex;justify-content:space-between;padding:12px 14px;background:#1e1e2e;border-radius:12px;margin-bottom:8px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="logo">THE PERI <span>GAME</span></div>
+  <div class="elo-badge">ELO <b id="eloDisplay">1000</b></div>
+</div>
+
+<!-- START -->
+<div id="startScreen" class="card">
+  <h1>Bist du bereit?</h1>
+  <p class="sub">Schnell = viel Elo. Langsam = 0 Elo. Falsch = Minus Elo.</p>
+  <input id="playerName" placeholder="Dein Name... z.B. Bastian" maxlength="12">
+  <p style="text-align:left;margin:10px 0 8px;color:#8888a0;font-size:14px">MODUS WÄHLEN:</p>
+  <button class="btn btn-dark btn-active" id="modeClassic" onclick="setMode('classic')">🧪 Klassik: Kürzel → Name</button>
+  <button class="btn btn-dark" id="modeNumber" onclick="setMode('number')">🔢 Ordnungszahl → Element</button>
+  <button class="btn btn-primary" onclick="startGame()">▶ JETZT SPIELEN</button>
+  <p style="font-size:13px;color:#666;margin-top:8px">+20 bei richtig, -15 bei falsch<br>Unter 2s: +10 Bonus • Unter 5s: +5 • Über 8s: 0</p>
+</div>
+
+<!-- GAME -->
+<div id="gameScreen" class="card hidden">
+  <div style="display:flex;justify-content:space-between;color:#8888a0;font-size:14px"><span id="roundInfo">Runde 1</span><span id="timeText">10.0s</span></div>
+  <div class="timer-wrap"><div id="timerBar"></div></div>
+  <div class="element-sub" id="questionLabel">WELCHES ELEMENT?</div>
+  <div class="element-big" id="question">Fe</div>
+  <input id="answerInput" placeholder="Element eingeben..." autocomplete="off" onkeydown="if(event.key==='Enter') checkAnswer()">
+  <div class="feedback" id="feedback"></div>
+  <button class="btn btn-primary" onclick="checkAnswer()">EINLOGGEN →</button>
+  <button class="btn btn-dark" onclick="showStart()">Beenden</button>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="card" style="margin-top:16px">
+  <h3 style="text-align:left;margin-bottom:12px">🏆 LEADERBOARD - NACH ELO</h3>
+  <div id="leaderboard" class="leader"></div>
+</div>
+
+<script>
+const ELEMENTS=[
+{name:"Wasserstoff",symbol:"H",number:1},
+{name:"Helium",symbol:"He",number:2},
+{name:"Lithium",symbol:"Li",number:3},
+{name:"Beryllium",symbol:"Be",number:4},
+{name:"Bor",symbol:"B",number:5},
+{name:"Kohlenstoff",symbol:"C",number:6},
+{name:"Stickstoff",symbol:"N",number:7},
+{name:"Sauerstoff",symbol:"O",number:8},
+{name:"Fluor",symbol:"F",number:9},
+{name:"Neon",symbol:"Ne",number:10},
+{name:"Natrium",symbol:"Na",number:11},
+{name:"Magnesium",symbol:"Mg",number:12},
+{name:"Aluminium",symbol:"Al",number:13},
+{name:"Silicium",symbol:"Si",number:14},
+{name:"Phosphor",symbol:"P",number:15},
+{name:"Schwefel",symbol:"S",number:16},
+{name:"Chlor",symbol:"Cl",number:17},
+{name:"Argon",symbol:"Ar",number:18},
+{name:"Kalium",symbol:"K",number:19},
+{name:"Calcium",symbol:"Ca",number:20},
+{name:"Eisen",symbol:"Fe",number:26},
+{name:"Kupfer",symbol:"Cu",number:29},
+{name:"Zink",symbol:"Zn",number:30},
+{name:"Silber",symbol:"Ag",number:47},
+{name:"Gold",symbol:"Au",number:79},
+{name:"Quecksilber",symbol:"Hg",number:80},
+{name:"Blei",symbol:"Pb",number:82},
+{name:"Uran",symbol:"U",number:92}
+];
+let mode='classic', elo=1000, current=null, startTime=0, round=1, timerInterval=null, timeLeft=10, player="Spieler";
+
+function setMode(m){
+  mode=m;
+  document.getElementById('modeClassic').classList.toggle('btn-active',m==='classic');
+  document.getElementById('modeNumber').classList.toggle('btn-active',m==='number');
+}
+function startGame(){
+  player=document.getElementById('playerName').value.trim()||"Spieler";
+  let saved=JSON.parse(localStorage.getItem('peri_leader')||"[]");
+  let me=saved.find(x=>x.name===player);
+  elo=me?me.elo:1000;
+  updateElo();
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('gameScreen').classList.remove('hidden');
+  round=1; nextQuestion();
+}
+function showStart(){
+  clearInterval(timerInterval);
+  document.getElementById('gameScreen').classList.add('hidden');
+  document.getElementById('startScreen').classList.remove('hidden');
+  saveScore(); renderLeader();
+}
+function nextQuestion(){
+  current=ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)];
+  document.getElementById('roundInfo').textContent="Runde "+round+" • "+player;
+  if(mode==='classic'){
+    document.getElementById('questionLabel').textContent="WELCHES ELEMENT IST DAS?";
+    document.getElementById('question').textContent=current.symbol;
+  }else{
+    document.getElementById('questionLabel').textContent="ORDNUNGSZAHL "+current.number+" = ?";
+    document.getElementById('question').textContent="#"+current.number;
+  }
+  document.getElementById('answerInput').value="";
+  document.getElementById('feedback').textContent="";
+  document.getElementById('answerInput').focus();
+  startTime=Date.now(); timeLeft=10;
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    timeLeft-=0.1;
+    document.getElementById('timerBar').style.width=Math.max(0,timeLeft*10)+"%";
+    document.getElementById('timeText').textContent=Math.max(0,timeLeft).toFixed(1)+"s";
+    document.getElementById('timerBar').style.background=timeLeft<3?"#ef4444":"#4ade80";
+    if(timeLeft<=0){ clearInterval(timerInterval); checkAnswer(true); }
+  },100);
+}
+function checkAnswer(timeout=false){
+  clearInterval(timerInterval);
+  let elapsed=(Date.now()-startTime)/1000;
+  let answer=document.getElementById('answerInput').value.trim().toLowerCase();
+  let correct=answer===current.name.toLowerCase();
+  let fb=document.getElementById('feedback');
+  if(timeout||!correct){
+    elo=Math.max(0,elo-15);
+    fb.style.color="#ef4444"; fb.textContent=timeout?`ZU LANGSAM! -15 Elo • Richtig wäre: ${current.name}`:`FALSCH! -15 Elo • Richtig wäre: ${current.name}`;
+  }else{
+    let bonus=elapsed<2?10:elapsed<5?5:elapsed<8?0:0;
+    let gain=20+bonus;
+    if(elapsed>=8) gain=0;
+    elo+=gain;
+    fb.style.color="#4ade80"; fb.textContent=`RICHTIG! +${gain} Elo in ${elapsed.toFixed(1)}s`;
+  }
+  updateElo(); saveScore(); renderLeader();
+  round++;
+  setTimeout(nextQuestion,1400);
+}
+function updateElo(){ document.getElementById('eloDisplay').textContent=elo; }
+function saveScore(){
+  let saved=JSON.parse(localStorage.getItem('peri_leader')||"[]");
+  let me=saved.find(x=>x.name===player);
+  if(me) me.elo=Math.max(me.elo,elo); else saved.push({name:player,elo:elo});
+  saved.sort((a,b)=>b.elo-a.elo);
+  localStorage.setItem('peri_leader',JSON.stringify(saved.slice(0,10)));
+}
+function renderLeader(){
+  let saved=JSON.parse(localStorage.getItem('peri_leader')||"[]");
+  let html=saved.length?"":`<p style="color:#666">Noch keiner gespielt. Sei der Erste!</p>`;
+  saved.forEach((p,i)=>{
+    html+=`<div class="leader-row"><span>${i+1}. ${p.name} ${p.name===player?"(DU)":""}</span><b>${p.elo} Elo</b></div>`;
+  });
+  document.getElementById('leaderboard').innerHTML=html;
+}
+renderLeader();
+</script>
+</body>
+</html>
